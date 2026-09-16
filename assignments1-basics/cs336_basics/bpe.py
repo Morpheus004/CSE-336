@@ -1,6 +1,8 @@
 import time
 
 import regex as re
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import Process
 
 from cs336_basics.pretokenization_example import find_chunk_boundaries
 
@@ -58,34 +60,39 @@ def train_bpe(
         # we add existing unchanged tuples as well as changed tuples to word_count
         new_word_counts = {}
         for t, c in word_counts.items():
+            if best_pair[0] not in t:
+                new_word_counts[t] = c
+                continue
             i = 0  # index on words
-            j = 0  # index on tuples
-            # insert = False
+            insert = False
             tn = []
             while i < len(t):
                 if i < len(t) - 1 and t[i] == best_pair[0] and t[i + 1] == best_pair[1]:
                     tn.append(best_pair[0] + best_pair[1])
-                    # insert = True
-                    j = len(tn) - 1
-                    # FIX: remove counts of a,b where we have the following match
-                    if i > 0:
-                        pair_counts[(t[i - 1], t[i])] = pair_counts.get((t[i - 1], t[i]), 0) - c
-                    if i + 2 < len(t):
-                        pair_counts[(t[i + 1], t[i + 2])] = pair_counts.get((t[i + 1], t[i + 2]), 0) - c
-                    # NOTE: This adds a,bc and bc,d counts to pair_counts
-                    if i + 2 < len(t):
-                        pair_counts[(tn[j], t[i + 2])] = pair_counts.get((tn[j], t[i + 2]), 0) + c
-                    if i > 0:
-                        pair_counts[(tn[j - 1], tn[j])] = pair_counts.get((tn[j - 1], tn[j]), 0) + c
+                    insert = True
                     i += 2
                 else:
                     tn.append(t[i])
                     i += 1
             new_word_counts[tuple(tn)] = c
-            # if insert:
-            #     for i in range(len(tn) - 1):
-            #         pair_counts[(tn[i], tn[i + 1])] = pair_counts.get((tn[i], tn[i + 1]), 0) + c
-        pair_counts.pop(best_pair)
+            # TODO: lets put the old pair removal logic here
+            # remove counts of old right pair and old left pair
+            if insert:
+                for i in range(len(tn) - 1):
+                    pair_counts[(tn[i], tn[i + 1])] = pair_counts.get((tn[i], tn[i + 1]), 0) + c
+                for i in range(len(t)-1):
+                    pair_counts[(t[i], t[i + 1])] = pair_counts.get((t[i], t[i + 1]), 0) - c
+                    if pair_counts.get((t[i], t[i + 1]), 0) <= 0:
+                        pair_counts.pop((t[i], t[i + 1]))
+                    # if i > 0:
+                    #     pair_counts[(t[i - 1], t[i])] = pair_counts.get((t[i - 1], t[i]), 0) - c
+                    # if i + 2 < len(t):
+                    #     pair_counts[(t[i + 1], t[i + 2])] = pair_counts.get((t[i + 1], t[i + 2]), 0) - c
+                    # if i + 2 < len(t):
+                    #     pair_counts[(tn[j], t[i + 2])] = pair_counts.get((tn[j], t[i + 2]), 0) + c
+                    # if i > 0:
+                    #     pair_counts[(tn[j - 1], tn[j])] = pair_counts.get((tn[j - 1], tn[j]), 0) + c
+        pair_counts.pop(best_pair, None)
 
         word_counts = new_word_counts
     return vocab, merges
