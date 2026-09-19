@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from einops import einsum
+from einops import einsum, rearrange
 
 
 class Linear(nn.Module):
@@ -115,3 +115,34 @@ class SwiGLU(nn.Module):
         out = self.silu(self.w1(x))
         out = torch.mul(out, self.w3(x))
         return self.w2(out)
+
+
+class RotaryPositionalEmbedding(nn.Module):
+    def __init__(self, theta: float, d_k: int, max_seq_len: int, device=None) -> None:
+        super().__init__()
+        self.theta = torch.tensor(theta)
+        if device is not None:
+            self.theta = self.theta.to(device)
+        # weight = torch.tensor(torch.zeros(max_seq_len, d_k//2))
+        # for loops not good
+        # for i in range(weight.size(dim=-2)):
+        #     for j in range(1, weight.size(dim=-1)+1):
+        #         weight[i][j-1] = i/torch.pow(self.theta, (2*j-2)/d_k)
+
+        # vectorized implementation
+        positions = torch.arange(0, max_seq_len, device=device)
+        frequency = torch.pow(self.theta, -torch.arange(0, d_k, 2, device=device) / d_k)
+        weight = einsum(positions, frequency, "max_seq_len, v -> max_seq_len v")
+        self.register_buffer("cos", torch.cos(weight), persistent=False)
+        self.register_buffer("sin", torch.sin(weight), persistent=False)
+
+    def forward(self, x: torch.Tensor, token_positions: torch.Tensor) -> torch.Tensor:
+        y = rearrange(x, "... seq_len (d two) -> ... seq_len d two", two=2)
+        sin = self.sin[token_positions]  # shape => seq_len, d_k/2
+        cos = self.cos[token_positions]
+        y0 = y[..., 0] * cos - y[..., 1] * sin
+        y1 = y[..., 0] * sin + y[..., 1] * cos
+        y = torch.stack([y0, y1], dim=-1)
+        y = rearrange(y, "... seq_len d two -> ... seq_len (d two)")
+
+        return y

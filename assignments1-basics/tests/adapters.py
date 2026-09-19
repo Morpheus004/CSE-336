@@ -12,7 +12,7 @@ from torch.optim.optimizer import Kwargs
 
 from cs336_basics.bpe import train_bpe
 from cs336_basics.tokenizer import Tokenizer
-from cs336_basics.transformer import Embedding, Linear, RMSNorm, SiLU, SwiGLU
+from cs336_basics.transformer import Embedding, Linear, RMSNorm, RotaryPositionalEmbedding, SiLU, SwiGLU
 
 
 def run_linear(
@@ -210,7 +210,9 @@ def run_rope(
     Returns:
         Float[Tensor, " ... sequence_length d_k"]: Tensor with RoPEd input.
     """
-    raise NotImplementedError
+    # raise NotImplementedError
+    rope = RotaryPositionalEmbedding(theta, d_k, max_seq_len, device)
+    return rope(in_query_or_key, token_positions)
 
 
 def run_transformer_block(
