@@ -35,3 +35,18 @@ This made the (b, seq, d_model) vector a vector of shape 1
 
 > Solution : torch.square(x).sum(dim=-1, keepdim=True)
     This would keep the shape as (b, seq, d_model)
+
+## Handling devices and dtype
+```python
+        if weight is None:
+            weight = nn.Parameter(torch.ones(d_model), requires_grad=True)
+        else:
+            weight = nn.Parameter(weight, requires_grad=True)
+        if device is not None:
+            weight = weight.to(device=device)
+        if dtype is not None:
+            weight = weight.to(dtype=dtype)
+        self.weight = weight
+```
+Have a look at the code above. First a parameter is created out of weights, and then it is set to the correct device and dtype. 
+> ***Using .to on a parameter changes it to a tensor***

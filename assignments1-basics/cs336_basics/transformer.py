@@ -36,25 +36,25 @@ class Embedding(nn.Module):
         self,
         num_embeddings: int,
         embedding_dim: int,
-        embedding_matrix: torch.Tensor | None = None,
+        weight: torch.Tensor | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
         super().__init__()
-        if embedding_matrix is None:
+        if weight is None:
             # num_embeddings is vocab_size
-            embedding_matrix = nn.init.trunc_normal_(
+            weight = nn.init.trunc_normal_(
                 torch.empty([num_embeddings, embedding_dim]),
                 std=1,
                 a=-3,
                 b=3,
             )
         if device is not None:
-            embedding_matrix = embedding_matrix.to(device)
-        self.embedding_matrix = nn.Parameter(embedding_matrix, requires_grad=True)
+            weight = weight.to(device)
+        self.weight = nn.Parameter(weight, requires_grad=True)
 
     def forward(self, token_ids: torch.Tensor) -> torch.Tensor:
-        return self.embedding_matrix[token_ids]
+        return self.weight[token_ids]
 
 
 class RMSNorm(nn.Module):
@@ -70,16 +70,19 @@ class RMSNorm(nn.Module):
         self.eps = eps
         self.d_model = d_model
         if weight is None:
-            self.g = nn.Parameter(torch.ones(d_model), requires_grad=True)
-        else:
-            self.g = nn.Parameter(weight, requires_grad=True)
+            weight = torch.ones(d_model)
+        if device is not None:
+            weight = weight.to(device=device)
+        if dtype is not None:
+            weight = weight.to(dtype=dtype)
+        self.weight = nn.Parameter(weight, requires_grad=True)
 
     def forward(self, x: torch.Tensor):
         in_dtype = x.dtype
         x = x.to(torch.float32)
         rms = torch.sqrt((torch.square(x).sum(dim=-1, keepdim=True) / self.d_model) + self.eps)
-        rmsnorm = torch.mul(x, self.g) / rms
-        # rmsnorm = einsum(x, self.g,"... d_in, d_in -> ... d_in")/rms
+        rmsnorm = torch.mul(x, self.weight) / rms
+        # rmsnorm = einsum(x, self.weight,"... d_in, d_in -> ... d_in")/rms
         return rmsnorm.to(in_dtype)
 
 
