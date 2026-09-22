@@ -1,3 +1,6 @@
+from math import exp
+
+from numpy import dtype
 import torch
 from torch import nn
 from einops import einsum, rearrange
@@ -145,4 +148,119 @@ class RotaryPositionalEmbedding(nn.Module):
         y = torch.stack([y0, y1], dim=-1)
         y = rearrange(y, "... seq_len d two -> ... seq_len (d two)")
 
+        return y
+
+
+def softmax(x: torch.Tensor, dim: int):
+    x_max = torch.max(x, dim=dim, keepdim=True)
+    x_c = x - x_max.values
+    exp_x_c = torch.exp(x_c)
+    denom = torch.sum(exp_x_c, dim=dim, keepdim=True)
+    return exp_x_c / denom
+
+
+def scaled_dot_product_attention(Q: torch.Tensor, K: torch.Tensor, V: torch.Tensor, mask: torch.Tensor | None = None):
+    affinities = einsum(Q, K, "... n d,... m d ->... n m") / Q.size(dim=-1) ** 0.5
+    if mask is not None:
+        mask_affinities = torch.where(mask, affinities, -torch.inf)
+    else:
+        mask_affinities = affinities
+    softmax_masked_affinities = softmax(mask_affinities, dim=-1)
+    out = einsum(softmax_masked_affinities, V, "... n m,... m d_k ->... n d_k")
+    return out
+
+
+class MultiHeadSelfAttention(nn.Module):
+    def __init__(
+        self,
+        d_model: int,
+        num_heads: int,
+        Q: torch.Tensor | None = None,
+        K: torch.Tensor | None = None,
+        V: torch.Tensor | None = None,
+        O: torch.Tensor | None = None,
+        max_seq_len: int | None = None,
+        theta: float | None = None,
+    ) -> None:
+        super().__init__()
+        self.num_heads = num_heads
+        self.max_seq_len = max_seq_len
+        self.theta = theta
+        if max_seq_len is not None:
+            self.mask = torch.tril(torch.ones(max_seq_len, max_seq_len, dtype=torch.bool))
+        if theta is not None and max_seq_len is not None:
+            self.rope = RotaryPositionalEmbedding(theta, d_model // num_heads, max_seq_len)
+        else:
+            self.rope = None
+        # Q, K, V are d_model, d_model
+        self.q_proj = Linear(d_model, d_model, Q)
+        self.k_proj = Linear(d_model, d_model, K)
+        self.v_proj = Linear(d_model, d_model, V)
+        self.output_proj = Linear(d_model, d_model, O)
+
+    def forward(self, x: torch.Tensor, token_positions: torch.Tensor | None = None):
+        q = self.q_proj(x)
+        k = self.k_proj(x)
+        v = self.v_proj(x)
+        q = rearrange(q, "... sl (h d_k) -> ... h sl d_k", h=self.num_heads)
+        k = rearrange(k, "... sl (h d_k) -> ... h sl d_k", h=self.num_heads)
+        v = rearrange(v, "... sl (h d_k) -> ... h sl d_k", h=self.num_heads)
+        if self.max_seq_len is None:
+            self.max_seq_len = x.size(dim=-2)
+            self.mask = torch.tril(torch.ones(self.max_seq_len, self.max_seq_len, device=x.device, dtype=torch.bool))
+        self.mask = self.mask.to(x.device)
+        if self.rope is not None:
+            if token_positions is None:
+                token_positions = torch.arange(0, x.size(dim=-2), device=x.device)
+            q = self.rope(q, token_positions)
+            k = self.rope(k, token_positions)
+        affinities = scaled_dot_product_attention(q, k, v, self.mask[: x.size(dim=-2), : x.size(dim=-2)])
+        affinities = rearrange(affinities, "... h sl d_k -> ... sl (h d_k)")
+        o = self.output_proj(affinities)
+        return o
+
+
+class TransformerBlock(nn.Module):
+    def __init__(self, d_model: int, num_heads: int, d_ff: int, max_seq_len: int, theta: float) -> None:
+        super().__init__()
+        self.attn = MultiHeadSelfAttention(
+            d_model,
+            num_heads,
+            max_seq_len=max_seq_len,
+            theta=theta,
+        )
+        self.ln1 = RMSNorm(d_model)
+        self.ln2 = RMSNorm(d_model)
+        self.ffn = SwiGLU(d_model, d_ff)
+
+    def forward(self, x: torch.Tensor, token_positions: torch.Tensor | None = None):
+        y = x + self.attn(self.ln1(x), token_positions)
+        return y + self.ffn(self.ln2(y))
+
+
+class TransformerLM(nn.Module):
+    def __init__(
+        self,
+        vocab_size: int,
+        context_length: int,
+        d_model: int,
+        num_layers: int,
+        num_heads: int,
+        d_ff: int,
+        theta: float,
+    ) -> None:
+        super().__init__()
+        self.token_embeddings = Embedding(vocab_size, d_model)
+        self.layers = nn.ModuleList(
+            [TransformerBlock(d_model, num_heads, d_ff, context_length, theta) for layer in range(num_layers)]
+        )
+        self.ln_final = RMSNorm(d_model)
+        self.lm_head = Linear(d_model, vocab_size)
+
+    def forward(self, in_indices: torch.Tensor):
+        y = self.token_embeddings(in_indices)
+        for l in self.layers:
+            y = l(y)
+        y = self.ln_final(y)
+        y = self.lm_head(y)
         return y
