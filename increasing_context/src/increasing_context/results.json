@@ -102,5 +102,74 @@
     "context_length": 262144,
     "status": "error",
     "error": "CUDA out of memory. Tried to allocate 2.00 GiB. GPU 0 has a total capacity of 22.06 GiB of which 467.44 MiB is free. Process 1 has 21.59 GiB memory in use. Of the allocated memory 19.77 GiB is allocated by PyTorch, and 1.54 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memo"
+  },
+  {
+    "model": "Qwen3.5-0.8B-optimized",
+    "context_length": 128,
+    "peak_memory_gb": 1.9928,
+    "latency_s": 37.6884,
+    "status": "ok",
+    "causal_conv1d_available": true,
+    "flash_linear_attention_available": true
+  },
+  {
+    "model": "Qwen3.5-0.8B-optimized",
+    "context_length": 512,
+    "peak_memory_gb": 1.7755,
+    "latency_s": 0.602,
+    "status": "ok",
+    "causal_conv1d_available": true,
+    "flash_linear_attention_available": true
+  },
+  {
+    "model": "Qwen3.5-0.8B-optimized",
+    "context_length": 2048,
+    "peak_memory_gb": 1.8992,
+    "latency_s": 0.6431,
+    "status": "ok",
+    "causal_conv1d_available": true,
+    "flash_linear_attention_available": true
+  },
+  {
+    "model": "Qwen3.5-0.8B-optimized",
+    "context_length": 8192,
+    "peak_memory_gb": 2.394,
+    "latency_s": 9.8935,
+    "status": "ok",
+    "causal_conv1d_available": true,
+    "flash_linear_attention_available": true
+  },
+  {
+    "model": "Qwen3.5-0.8B-optimized",
+    "context_length": 32768,
+    "peak_memory_gb": 4.3733,
+    "latency_s": 11.511,
+    "status": "ok",
+    "causal_conv1d_available": true,
+    "flash_linear_attention_available": true
+  },
+  {
+    "model": "Qwen3.5-0.8B-optimized",
+    "context_length": 65536,
+    "peak_memory_gb": 7.0123,
+    "latency_s": 14.7024,
+    "status": "ok",
+    "causal_conv1d_available": true,
+    "flash_linear_attention_available": true
+  },
+  {
+    "model": "Qwen3.5-0.8B-optimized",
+    "context_length": 131072,
+    "peak_memory_gb": 12.2903,
+    "latency_s": 24.6011,
+    "status": "ok",
+    "causal_conv1d_available": true,
+    "flash_linear_attention_available": true
+  },
+  {
+    "model": "Qwen3.5-0.8B-optimized",
+    "context_length": 262144,
+    "status": "error",
+    "error": "CUDA out of memory. Tried to allocate 1024.00 MiB. GPU 0 has a total capacity of 22.06 GiB of which 453.44 MiB is free. Process 1 has 21.61 GiB memory in use. Of the allocated memory 20.28 GiB is allocated by PyTorch, and 1.05 GiB is reserved by PyTorch but unallocated. If reserved but unallocated m"
   }
 ]

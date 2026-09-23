@@ -1,4 +1,5 @@
 import json
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -38,19 +39,31 @@ def main():
         "figure.titlesize": 15
     })
 
+    display_names = {
+        "Qwen2.5-1.5B": "Qwen2.5-1.5B",
+        "Qwen3.5-0.8B": "Qwen3.5-0.8B (Standard)",
+        "Qwen3.5-0.8B-optimized": "Qwen3.5-0.8B (Optimized)",
+    }
     colors = {
-        "Qwen2.5-1.5B": "#1f77b4",  # blue
-        "Qwen3.5-0.8B": "#ff7f0e",  # orange
+        "Qwen2.5-1.5B": "#1f77b4",            # blue
+        "Qwen3.5-0.8B": "#ff7f0e",            # orange
+        "Qwen3.5-0.8B-optimized": "#2ca02c",  # green
     }
     markers = {
         "Qwen2.5-1.5B": "o",
         "Qwen3.5-0.8B": "s",
+        "Qwen3.5-0.8B-optimized": "^",
+    }
+    oom_text_offsets = {
+        "Qwen3.5-0.8B": (0.22, 21.5),
+        "Qwen3.5-0.8B-optimized": (0.22, 17.0),
+        "Qwen2.5-1.5B": (0.22, 23.0),
     }
 
     # ==========================================
     # Plot 1: Context Length vs Peak VRAM (Single)
     # ==========================================
-    fig, ax = plt.subplots(figsize=(8, 6), dpi=300)
+    fig, ax = plt.subplots(figsize=(8.5, 6), dpi=300)
 
     for m_name, runs in models.items():
         ok_runs = sorted(runs["ok"], key=lambda x: x["context_length"])
@@ -59,19 +72,22 @@ def main():
 
         color = colors.get(m_name, "#333333")
         marker = markers.get(m_name, "o")
+        label = display_names.get(m_name, m_name)
 
-        ax.plot(ctx, vram, marker=marker, linewidth=2.2, markersize=7, label=m_name, color=color)
+        ax.plot(ctx, vram, marker=marker, linewidth=2.2, markersize=7, label=label, color=color)
 
         # Plot OOM markers if any
         for oom in runs["oom"]:
             oom_ctx = oom["context_length"]
             ax.scatter(oom_ctx, 22.06, color="red", marker="x", s=120, linewidth=3, zorder=5)
+            x_factor, y_pos = oom_text_offsets.get(m_name, (0.22, 23.0))
             ax.annotate(
-                f"{m_name}\nOOM at {format_tokens(oom_ctx)}",
+                f"{label}\nOOM at {format_tokens(oom_ctx)}",
                 xy=(oom_ctx, 22.06),
-                xytext=(oom_ctx * 0.45, 23.0),
+                xytext=(oom_ctx * x_factor, y_pos),
+                ha="right",
                 arrowprops=dict(arrowstyle="->", color="red", lw=1.5),
-                fontsize=9.5,
+                fontsize=9.0,
                 color="darkred",
                 fontweight="bold",
                 bbox=dict(boxstyle="round,pad=0.3", fc="#ffeeee", ec="red", lw=1)
@@ -95,6 +111,9 @@ def main():
 
     plt.tight_layout()
     plt.savefig("ctx_vs_vram.png", dpi=300)
+    if os.path.isdir("plots"):
+        plt.savefig(os.path.join("plots", "ctx_vs_vram.png"), dpi=300)
+        print("Saved plots/ctx_vs_vram.png")
     plt.close()
     print("Saved ctx_vs_vram.png")
 

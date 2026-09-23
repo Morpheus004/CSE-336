@@ -259,3 +259,33 @@ $$
 [transformers] `causal_conv1d_update` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
 [transformers] `fused_recurrent_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
 ```
+
+## 3. Fixing the above import issues - Qwen3.5-optimized
+To install the packages mentioned above. I had to change the model image to a CUDA image, which had NVCC. This was required to compile causal conv1, which took a lot of time. I don't know how much improvement it provides to our model but still it has been compiled and used. 
+
+```python
+image = (
+    modal.Image.from_registry("nvidia/cuda:13.0.0-devel-ubuntu22.04", add_python="3.11")
+    .apt_install("git", "build-essential", "clang-14", "lld")
+    .env({"CC": "clang-14", "CXX": "clang++-14"})
+    .uv_pip_install(
+        "torch",
+        "torchvision",
+        "accelerate",
+        "transformers>=4.57.0",
+        "pillow",
+        "ninja",
+        "packaging",
+    )
+    # Compiled CUDA extensions - now have nvcc available via the devel base image,
+    # unlike debian_slim() which only ships the CUDA runtime, not the compiler toolchain.
+    .run_commands(
+        "pip install causal-conv1d --no-build-isolation",
+    )
+    .run_commands(
+        "pip install flash-linear-attention",
+    )
+)
+```
+The reduction in VRAM usage can be seen in [README](../../README.md)
+<!-- TODO: Check how much improvement does each of this optimisation bring in and learn about it -->
