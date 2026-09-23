@@ -1,0 +1,106 @@
+[
+  {
+    "model": "Qwen2.5-1.5B",
+    "context_length": 128,
+    "peak_memory_gb": 3.1081,
+    "latency_s": 2.7424,
+    "status": "ok"
+  },
+  {
+    "model": "Qwen2.5-1.5B",
+    "context_length": 512,
+    "peak_memory_gb": 3.1447,
+    "latency_s": 0.447,
+    "status": "ok"
+  },
+  {
+    "model": "Qwen2.5-1.5B",
+    "context_length": 2048,
+    "peak_memory_gb": 3.2942,
+    "latency_s": 0.5342,
+    "status": "ok"
+  },
+  {
+    "model": "Qwen2.5-1.5B",
+    "context_length": 8192,
+    "peak_memory_gb": 3.8764,
+    "latency_s": 0.9198,
+    "status": "ok"
+  },
+  {
+    "model": "Qwen2.5-1.5B",
+    "context_length": 32768,
+    "peak_memory_gb": 6.2176,
+    "latency_s": 3.9166,
+    "status": "ok"
+  },
+  {
+    "model": "Qwen2.5-1.5B",
+    "context_length": 65536,
+    "peak_memory_gb": 9.3392,
+    "latency_s": 12.4334,
+    "status": "ok"
+  },
+  {
+    "model": "Qwen2.5-1.5B",
+    "context_length": 131072,
+    "peak_memory_gb": 15.5824,
+    "latency_s": 45.9174,
+    "status": "ok"
+  },
+  {
+    "model": "Qwen3.5-0.8B",
+    "context_length": 128,
+    "peak_memory_gb": 1.7538,
+    "latency_s": 3.5902,
+    "status": "ok"
+  },
+  {
+    "model": "Qwen3.5-0.8B",
+    "context_length": 512,
+    "peak_memory_gb": 1.8007,
+    "latency_s": 0.7309,
+    "status": "ok"
+  },
+  {
+    "model": "Qwen3.5-0.8B",
+    "context_length": 2048,
+    "peak_memory_gb": 1.9967,
+    "latency_s": 0.8419,
+    "status": "ok"
+  },
+  {
+    "model": "Qwen3.5-0.8B",
+    "context_length": 8192,
+    "peak_memory_gb": 2.781,
+    "latency_s": 1.3744,
+    "status": "ok"
+  },
+  {
+    "model": "Qwen3.5-0.8B",
+    "context_length": 32768,
+    "peak_memory_gb": 5.9189,
+    "latency_s": 4.502,
+    "status": "ok"
+  },
+  {
+    "model": "Qwen3.5-0.8B",
+    "context_length": 65536,
+    "peak_memory_gb": 10.1035,
+    "latency_s": 10.4681,
+    "status": "ok"
+  },
+  {
+    "model": "Qwen3.5-0.8B",
+    "context_length": 131072,
+    "peak_memory_gb": 18.4727,
+    "latency_s": 27.4852,
+    "status": "ok"
+  },
+  {
+    "model": "Qwen3.5-0.8B",
+    "context_length": 262144,
+    "status": "error",
+    "error": "CUDA out of memory. Tried to allocate 2.00 GiB. GPU 0 has a total capacity of 22.06 GiB of which 467.44 MiB is free. Process 1 has 21.59 GiB memory in use. Of the allocated memory 19.77 GiB is allocated by PyTorch, and 1.54 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memo"
+  }
+]

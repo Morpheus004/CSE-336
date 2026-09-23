@@ -1,0 +1,22 @@
+[project]
+name = "increasing-context"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Pratham", email = "prathambhanushali2004@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.11.2",
+    "modal>=1.5.5",
+    "torch~=2.13.0",
+    "transformers>=5.17.0",
+]
+
+[project.scripts]
+increasing-context = "increasing_context:main"
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
