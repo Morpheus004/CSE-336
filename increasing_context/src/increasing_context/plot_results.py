@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -12,6 +13,13 @@ def load_data(filepath="results.json"):
     with open(filepath, "r") as f:
         data = json.load(f)
     return data
+
+def parse_oom_memory(error_str):
+    """Extract 'X.XX GiB memory in use' from a CUDA OOM error message."""
+    if not error_str:
+        return None
+    match = re.search(r"Process \d+ has ([\d.]+) GiB memory in use", error_str)
+    return float(match.group(1)) if match else None
 
 def main():
     data = load_data("results.json")
@@ -55,10 +63,15 @@ def main():
         "Qwen3.5-0.8B-optimized": "^",
     }
     oom_text_offsets = {
-        "Qwen3.5-0.8B": (0.22, 21.5),
-        "Qwen3.5-0.8B-optimized": (0.22, 17.0),
-        "Qwen2.5-1.5B": (0.22, 23.0),
+        "Qwen3.5-0.8B": (0.22, 18.0),
+        "Qwen3.5-0.8B-optimized": (0.22, 13.5),
+        "Qwen2.5-1.5B": (0.22, 18.0),
     }
+
+    # Real usable VRAM ceiling, derived from the CUDA OOM messages themselves
+    # ("GPU 0 has a total capacity of 22.06 GiB..."), NOT the 24 GB nameplate figure.
+    GPU_USABLE_VRAM = 22.06
+    GPU_NAMEPLATE_VRAM = 24.0
 
     # ==========================================
     # Plot 1: Context Length vs Peak VRAM (Single)
@@ -76,26 +89,44 @@ def main():
 
         ax.plot(ctx, vram, marker=marker, linewidth=2.2, markersize=7, label=label, color=color)
 
-        # Plot OOM markers if any
-        for oom in runs["oom"]:
+        # Plot OOM markers, using the real "memory in use at failure" value
+        # parsed from the error string when available, rather than a shared constant.
+        for oom in sorted(runs["oom"], key=lambda x: x["context_length"]):
             oom_ctx = oom["context_length"]
-            ax.scatter(oom_ctx, 22.06, color="red", marker="x", s=120, linewidth=3, zorder=5)
+            mem_at_failure = parse_oom_memory(oom.get("error", ""))
+            y_val = mem_at_failure if mem_at_failure is not None else GPU_USABLE_VRAM
+
+            # Dashed connector from the last successful point to the OOM marker,
+            # visually distinguishing "crash snapshot" from a converged peak reading.
+            if ok_runs:
+                last_ok = ok_runs[-1]
+                ax.plot(
+                    [last_ok["context_length"], oom_ctx],
+                    [last_ok["peak_memory_gb"], y_val],
+                    linestyle=":", linewidth=1.5, color=color, alpha=0.6
+                )
+
+            ax.scatter(oom_ctx, y_val, color="red", marker="x", s=120, linewidth=3, zorder=5)
             x_factor, y_pos = oom_text_offsets.get(m_name, (0.22, 23.0))
             ax.annotate(
-                f"{label}\nOOM at {format_tokens(oom_ctx)}",
-                xy=(oom_ctx, 22.06),
+                f"{label}\nOOM at {format_tokens(oom_ctx)}\n"
+                f"(mem in use at failure: {y_val:.1f} GB)",
+                xy=(oom_ctx, y_val),
                 xytext=(oom_ctx * x_factor, y_pos),
                 ha="right",
                 arrowprops=dict(arrowstyle="->", color="red", lw=1.5),
-                fontsize=9.0,
+                fontsize=8.5,
                 color="darkred",
                 fontweight="bold",
                 bbox=dict(boxstyle="round,pad=0.3", fc="#ffeeee", ec="red", lw=1)
             )
 
-    # A10G VRAM Limit Line
-    ax.axhline(24.0, color="#d62728", linestyle="--", linewidth=1.5, alpha=0.8, label="A10G Total VRAM (24 GB)")
-    ax.text(8192, 24.3, "GPU Capacity: 24 GB", color="#d62728", fontsize=9.5, fontweight="bold")
+    # Real usable VRAM ceiling (honest limit, not nameplate)
+    ax.axhline(GPU_USABLE_VRAM, color="#d62728", linestyle="--", linewidth=1.5, alpha=0.8,
+               label=f"A10G Usable VRAM (~{GPU_USABLE_VRAM:.1f} GB, from OOM logs)")
+    ax.text(8192, GPU_USABLE_VRAM + 0.3,
+            f"Usable Capacity: ~{GPU_USABLE_VRAM:.1f} GB (nameplate {GPU_NAMEPLATE_VRAM:.0f} GB)",
+            color="#d62728", fontsize=9.0, fontweight="bold", zorder=10)
 
     ax.set_xscale("log", base=2)
     all_ctx = [128, 512, 2048, 8192, 32768, 65536, 131072, 262144]

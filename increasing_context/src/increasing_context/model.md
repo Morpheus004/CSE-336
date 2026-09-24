@@ -289,3 +289,4 @@ image = (
 ```
 The reduction in VRAM usage can be seen in [README](../../README.md)
 <!-- TODO: Check how much improvement does each of this optimisation bring in and learn about it -->
+<!-- TODO: Actual quantisation -->
